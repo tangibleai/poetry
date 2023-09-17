@@ -58,6 +58,8 @@ This hook is provided by the [Export Poetry Plugin](https://github.com/python-po
 {{% /warning %}}
 
 {{% note %}}
+This hook is provided by the [Export Poetry Plugin](https://github.com/python-poetry/poetry-plugin-export).
+
 It is recommended to run the [`poetry-lock`](#poetry-lock) hook prior to this one.
 {{% /note %}}
 

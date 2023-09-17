@@ -42,6 +42,8 @@ jobs:
         shell: bash
     steps:
       - uses: actions/checkout@v4
+        with:
+          path: poetry
 
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v4
@@ -82,6 +84,7 @@ jobs:
 
       - name: Ensure cache is healthy
         if: steps.cache.outputs.cache-hit == 'true'
+        working-directory: ./poetry
         run: |
           # `timeout` is not available on macOS, so we define a custom function.
           [ "$(command -v timeout)" ] || function timeout() { perl -e 'alarm shift; exec @ARGV' "$@"; }
@@ -90,15 +93,19 @@ jobs:
           timeout 10s poetry run pip --version || rm -rf .venv
 
       - name: Check lock file
+        working-directory: ./poetry
         run: poetry check --lock
 
       - name: Install dependencies
+        working-directory: ./poetry
         run: poetry install --with github-actions
 
       - name: Run mypy
+        working-directory: ./poetry
         run: poetry run mypy
 
       - name: Run pytest
+        working-directory: ./poetry
         env:
           POETRY_TEST_INTEGRATION_GIT_USERNAME: ${GITHUB_ACTOR}
           POETRY_TEST_INTEGRATION_GIT_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
@@ -107,7 +114,9 @@ jobs:
       - name: Get Plugin Version (poetry-plugin-export)
         id: poetry-plugin-export-version
         run: |
-          echo version=$(poetry show poetry-plugin-export | grep version | cut -d : -f 2 | xargs) >> $GITHUB_OUTPUT
+          PLUGIN_VERSION=$(curl -s https://pypi.org/pypi/poetry-plugin-export/json | python -c 'import json, sys ; print(json.load(sys.stdin)["info"]["version"])')
+          echo "Found version ${PLUGIN_VERSION}"
+          echo version=${PLUGIN_VERSION} >> $GITHUB_OUTPUT
 
       - name: Checkout Plugin Source (poetry-plugin-export)
         uses: actions/checkout@v4
@@ -116,11 +125,26 @@ jobs:
           repository: python-poetry/poetry-plugin-export
           ref: refs/tags/${{ steps.poetry-plugin-export-version.outputs.version }}
 
+      - name: Update poetry version (poetry-plugin-export)
+        working-directory: poetry-plugin-export
+        run: |
+          poetry add --lock --dev ../poetry
+          git diff
+
+      - name: Install (poetry-plugin-export)
+        working-directory: ./poetry-plugin-export
+        run: poetry install
+
       - name: Run pytest (poetry-plugin-export)
         working-directory: ./poetry-plugin-export
-        run: poetry run -C .. pytest -v
+        run: poetry run python -m pytest -p no:sugar -q tests/
 
       - name: Check for clean working tree
+        working-directory: ./poetry
+        run: git diff --exit-code --stat HEAD
+
+      - name: Check for clean working tree (poetry-plugin-export)
+        working-directory: ./poetry-plugin-export
         run: |
+          git checkout -- pyproject.toml poetry.lock
           git diff --exit-code --stat HEAD
-          git -C poetry-plugin-export diff --exit-code --stat HEAD
