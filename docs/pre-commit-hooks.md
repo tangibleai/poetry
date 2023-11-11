@@ -53,10 +53,6 @@ For more information see the [lock command]({{< relref "cli#lock" >}}).
 The `poetry-export` hook calls the `poetry export` command
 to sync your `requirements.txt` file with your current dependencies.
 
-{{% warning %}}
-This hook is provided by the [Export Poetry Plugin](https://github.com/python-poetry/poetry-plugin-export).
-{{% /warning %}}
-
 {{% note %}}
 This hook is provided by the [Export Poetry Plugin](https://github.com/python-poetry/poetry-plugin-export).
 
